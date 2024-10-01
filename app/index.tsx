@@ -1,13 +1,17 @@
 import { StatusBar } from "expo-status-bar";
-import { FlatList, StyleSheet, Text, TextInput, View } from "react-native";
+import { FlatList, LayoutAnimation, StyleSheet, Text, TextInput, View } from "react-native";
 import { theme } from "../theme";
 import { ShoppingListItem } from "../components/ShoppingListItem";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { getFromStorage, saveToStorage } from "../utils/storage";
+
+const storageKey = "shoppingList";
 
 type ShoppingListItemType = {
   id: string;
   name: string;
   completedAtTimestamp?: number;
+  lastUpdatedTimestamp: number;
 };
 
 const testData = new Array(1000)
@@ -18,39 +22,82 @@ export default function App() {
   const [shoppingList, setShoppingList] = useState<ShoppingListItemType[]>([]);
   const [value, setValue] = useState("");
 
+  useEffect(() => {
+    const fetchInitial = async () => {
+      const data = await getFromStorage(storageKey);
+      if (data) {
+        LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+        setShoppingList(data);
+      }
+    };
+    fetchInitial();
+  }, []);
+
   const handleSubmit = () => {
     if (value) {
       const newshoppingList = [
-        { id: new Date().toTimeString(), name: value },
+        {
+          id: new Date().toTimeString(),
+          name: value,
+          lastUpdatedTimestamp: Date.now(),
+        },
         ...shoppingList,
       ];
+      LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);   
       setShoppingList(newshoppingList);
+      saveToStorage(storageKey, shoppingList);
       setValue("");
     }
   };
 
   const handleDelete = (id: string) => {
     const newshoppingList = shoppingList.filter((item) => item.id !== id);
+    saveToStorage(storageKey, shoppingList);
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
     setShoppingList(newshoppingList);
   };
 
   const handleToggleComplete = (id: string) => {
-      const newshoppingList = shoppingList.map((item) => {
-        if (item.id === id) {
-          return {
-            ...item,
-            completedAtTimestamp: item.completedAtTimestamp
-              ? undefined
-              : Date.now(),
-          };
-        }
-        return item;
-      });
-      setShoppingList(newshoppingList);
-    };
+    const newshoppingList = shoppingList.map((item) => {
+      if (item.id === id) {
+        return {
+          ...item,
+          completedAtTimestamp: item.completedAtTimestamp
+            ? undefined
+            : Date.now(),
+        };
+      }
+      return item;
+    });
+    saveToStorage(storageKey, newshoppingList);
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    setShoppingList(newshoppingList);
+    
+  };
+  function orderShoppingList(shoppingList: ShoppingListItemType[]) {
+    return shoppingList.sort((item1, item2) => {
+      if (item1.completedAtTimestamp && item2.completedAtTimestamp) {
+        return item2.completedAtTimestamp - item1.completedAtTimestamp;
+      }
+
+      if (item1.completedAtTimestamp && !item2.completedAtTimestamp) {
+        return 1;
+      }
+
+      if (!item1.completedAtTimestamp && item2.completedAtTimestamp) {
+        return -1;
+      }
+
+      if (!item1.completedAtTimestamp && !item2.completedAtTimestamp) {
+        return item2.lastUpdatedTimestamp - item1.lastUpdatedTimestamp;
+      }
+
+      return 0;
+    });
+  }
   return (
     <FlatList
-      data={shoppingList}
+      data={orderShoppingList(shoppingList)}
       contentContainerStyle={styles.contentContainer}
       stickyHeaderIndices={[0]}
       ListEmptyComponent={
@@ -85,7 +132,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#fff",
-    padding: 12,
+    paddingVertical: 12,
   },
   contentContainer: {
     paddingBottom: 24,

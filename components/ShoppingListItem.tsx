@@ -1,6 +1,8 @@
 import { Alert, Pressable, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { theme } from "../theme";
 import AntDesign from "@expo/vector-icons/AntDesign";
+import Entypo from '@expo/vector-icons/Entypo';
+
 
 type Props = {
   name: string;
@@ -35,11 +37,14 @@ export function ShoppingListItem({ name, isCompleted ,onDelete,onToggleComplete}
         isCompleted ? styles.completedContainer : undefined,
       ]}
     >
+     <View style = {styles.row}>
+     <Entypo name={isCompleted ? "check" : "circle"} size={24} color={isCompleted ? theme.colorGrey : theme.colorCerulean} />
       <Text
         style={[styles.itemText, isCompleted ? styles.itemText : undefined]}
       >
         {name}
       </Text>
+     </View>
       <TouchableOpacity onPress={handleDelete}>
         <AntDesign name="closecircle" size={24} color={isCompleted ? theme.colorGrey : theme.colorRed} />
       </TouchableOpacity>
@@ -69,5 +74,12 @@ const styles = StyleSheet.create({
   itemText: {
     fontSize: 18,
     fontWeight: "200",
-  }
+    flex: 1,
+  },
+  row: {
+    flexDirection: "row",
+    gap: 8,
+    alignItems: "center",
+    flex: 1,
+  },
 });
